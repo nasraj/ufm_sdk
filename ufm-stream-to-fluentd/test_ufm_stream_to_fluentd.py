@@ -3,6 +3,10 @@ import os
 from unittest import mock
 from unittest.mock import patch, call
 import unittest
+
+import configparser
+import requests
+
 import ufm_stream_to_fluentd
 from ufm_stream_to_fluentd import FluentdMessageMetadata
 
@@ -22,12 +26,14 @@ class MyTestCase(unittest.TestCase):
     def test_send_request(self):
         with patch('ufm_stream_to_fluentd.requests.get') as mocked_get:
             mocked_get.return_value.ok = True
+            mocked_get.raise_for_status.side_effect = requests.exceptions.HTTPError
             # Test Remote Streaming case
             ufm_stream_to_fluentd.local_streaming = False
             ufm_stream_to_fluentd.ufm_protocol = "http"
             ufm_stream_to_fluentd.ufm_host = "ufm"
             ufm_stream_to_fluentd.ufm_username = "admin"
             ufm_stream_to_fluentd.ufm_password = "123456"
+            mocked_get.raise_for_status.return_value = None
             mocked_get.return_value.status_code = 200
             ufm_stream_to_fluentd.send_ufm_request(ufm_stream_to_fluentd.UFM_API_VERSIONING)
             mocked_get.assert_called_with(f"http://ufm/ufmRest/{ufm_stream_to_fluentd.UFM_API_VERSIONING}",
@@ -66,7 +72,7 @@ class MyTestCase(unittest.TestCase):
             data = json.load(f)
             f.close()
             os.remove(path)
-        self.assertEqual(json_object, data)
+        self.assertDictEqual(json_object, data)
         raised = None
         try:
             ufm_stream_to_fluentd.write_json_to_file(path, json_object)
@@ -77,9 +83,11 @@ class MyTestCase(unittest.TestCase):
     def test_read_from_json(self):
         json_object = {"name": "abc", "text": "sample"}
         path = "api_results/test"
-        ufm_stream_to_fluentd.write_json_to_file(path, json_object)
+        f = open(path, "w")
+        f.write(json.dumps(json_object))
+        f.close()
         data = ufm_stream_to_fluentd.read_json_from_file(path)
-        self.assertEqual(json_object, data)
+        self.assertDictEqual(json_object, data)
 
     @patch('ufm_stream_to_fluentd.time.time', return_value=0)
     def test_stream_to_fluentd(self, mocked_time):
@@ -131,6 +139,24 @@ class MyTestCase(unittest.TestCase):
                 ufm_stream_to_fluentd.update_ufm_apis()
                 ufm_stream_to_fluentd.load_memory_with_jsons()
                 self.assertEqual(mocked_read.call_count, 5)
+
+    def test_get_config_value(self):
+        config_file = 'test_ufm_stream_to_fluentd.cfg'
+        ufm_stream_to_fluentd.CONFIG = configparser.RawConfigParser()
+        ufm_stream_to_fluentd.CONFIG.read(config_file)
+        args = {
+            'param1': 'ok'
+        }
+        self.assertTrue(ufm_stream_to_fluentd.get_config_value(args.get('param1'), 'params-section', 'param1') == 'ok',
+                        'Test Fails for value in arg')
+        self.assertTrue(ufm_stream_to_fluentd.get_config_value(args.get('param2'), 'params-section', 'param2') == '80',
+                        'Test Fails for value in config file')
+        self.assertTrue(ufm_stream_to_fluentd.get_config_value(args.get('param3'), 'params-section', 'param3', 'defaultValue') == 'defaultValue',
+                        'Test Fails for default value')
+        with self.assertRaises(ValueError):
+            ufm_stream_to_fluentd.get_config_value(args.get('param4'), 'params-section', 'param4')
+
+
 
 
 if __name__ == '__main__':

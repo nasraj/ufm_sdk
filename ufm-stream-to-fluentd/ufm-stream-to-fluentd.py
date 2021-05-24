@@ -48,6 +48,7 @@ global enabled_streaming_systems
 global enabled_streaming_ports
 global enabled_streaming_links
 global enabled_streaming_alarms
+global run_as_daemon
 
 stored_versioning_api = ''
 stored_systems_api = []
@@ -252,6 +253,7 @@ def parse_args():
     parser.add_argument('--streaming_ports', help='Enable/Disable streaming ports API [True|False]')
     parser.add_argument('--streaming_alarms', help='Enable/Disable streaming alarms API [True|False]')
     parser.add_argument('--streaming_links', help='Enable/Disable streaming links API [True|False]')
+    parser.add_argument('--daemon', help='Run as a daemon (in background)')
     return parser.parse_args()
 
 
@@ -281,6 +283,7 @@ def check_app_params():
     global enabled_streaming_ports
     global enabled_streaming_links
     global enabled_streaming_alarms
+    global run_as_daemon
     fluentd_host = get_config_value(args.fluentd_host, 'fluentd-config', 'host', None)
     fluentd_port = int(get_config_value(args.fluentd_port, 'fluentd-config', 'port', None))
     ufm_host = get_config_value(args.ufm_host, 'ufm-remote-server-config', 'host', None)
@@ -302,6 +305,7 @@ def check_app_params():
     enabled_streaming_ports = get_config_value(args.streaming_ports, 'streaming-config', 'ports', True) == 'True'
     enabled_streaming_links = get_config_value(args.streaming_links, 'streaming-config', 'links', True) == 'True'
     enabled_streaming_alarms = get_config_value(args.streaming_alarms, 'streaming-config', 'alarms', True) == 'True'
+    run_as_daemon = get_config_value(args.daemon, 'streaming-config','run_as_daemon', False) == 'True'
 
 
 class FluentdMessageMetadata:
@@ -331,6 +335,12 @@ def streaming_interval_is_valid():
     return True
 
 
+def update_and_stream_data():
+    load_memory_with_jsons()
+    update_ufm_apis()
+    stream_to_fluentd()
+
+
 # if run as main module
 if __name__ == "__main__":
     try:
@@ -352,12 +362,16 @@ if __name__ == "__main__":
             sys.exit()
 
         load_fluentd_metadata_json()
-        if streaming_interval_is_valid():
-            load_memory_with_jsons()
-            update_ufm_apis()
-            stream_to_fluentd()
+
+        if run_as_daemon:
+            while True:
+                update_and_stream_data()
+                time.sleep(streaming_interval*60)
         else:
-            logging.error("Streaming interval isn't completed")
+            if streaming_interval_is_valid():
+                update_and_stream_data()
+            else:
+                logging.error("Streaming interval isn't completed")
 
     except Exception as global_ex:
         logging.error(global_ex)

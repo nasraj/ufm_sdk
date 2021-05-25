@@ -66,9 +66,10 @@ Run
 | --streaming_ports <streaming_ports> | [streaming-config.ports](ufm-stream-to-fluentd.sample.cfg#L19) | False | Default is 'True'
 | --streaming_links <streaming_links> | [streaming-config.links](ufm-stream-to-fluentd.sample.cfg#L20) | False | Default is 'True'
 | --streaming_alarms <streaming_alarms> | [streaming-config.alarms](ufm-stream-to-fluentd.sample.cfg#L21) | False | Default is 'True'
+| --daemon <daemon> | [streaming-config.run_as_daemon](ufm-stream-to-fluentd.sample.cfg#L22) | False | Runs the application as a daemon. Default is 'False'
    
 *If command line argument is provided, the corresponding config value will be ignored
 
 Use
 -------------------------------------------------------- 
-This application is not a daemon; you should run it via time-based job scheduler (cron job).
+You can run this application as a daemon or run it via time-based job scheduler (cron job).

@@ -1,0 +1,9 @@
+[Unit]
+Description=UFM Stream To Fluentd
+
+[Service]
+ExecStart=/usr/bin/python /root/ufm_sdk/ufm-stream-to-fluentd/ufm-stream-to-fluentd.py --daemon=True
+ExecStop=/usr/bin/pkill -f /root/ufm_sdk/ufm-stream-to-fluentd/ufm-stream-to-fluentd.py
+
+[Install]
+WantedBy=multi-user.target

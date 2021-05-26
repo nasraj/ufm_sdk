@@ -2,6 +2,7 @@
 # Copyright (C) Mellanox Technologies Ltd. 2021.  ALL RIGHTS RESERVED.
 #
 # See file LICENSE for terms.
+import pprint
 
 import requests
 import configparser
@@ -349,7 +350,9 @@ if __name__ == "__main__":
 
         # init app configurations
         CONFIG = configparser.RawConfigParser()
-        CONFIG.read(CONFIG_FILE)
+        # CONFIG.read(CONFIG_FILE)
+        CONFIG.read(os.path.join(os.path.dirname(__file__), CONFIG_FILE))
+        pprint.pprint(CONFIG.sections())
 
         # init logging configuration
         init_logging_config()
